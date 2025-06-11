@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 Future<void> loginUser({
-  required String email,
+  required String phone,
   required String password,
 }) async {
   final url = Uri.parse('https://artisant.onrender.com/v1/auth/login');
@@ -15,7 +15,7 @@ Future<void> loginUser({
     url,
     headers: {'Content-Type': 'application/json'},
     body: json.encode({
-      'email': email,
+      'phone': phone,
       'password': password,
     }),
   );
@@ -55,15 +55,15 @@ class Welcome extends StatefulWidget {
 }
 
 class _WelcomeState extends State<Welcome> {
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
 
   void _handleLogin() async {
-    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    if (phone.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez remplir tous les champs')),
       );
@@ -76,17 +76,14 @@ class _WelcomeState extends State<Welcome> {
       final response = await http.post(
         Uri.parse('https://artisant.onrender.com/v1/auth/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
+        body: jsonEncode({'phone':phone, 'password': password}),
       );
 
       if (response.statusCode == 200) {
-     final data = jsonDecode(response.body);
-final token = data['token'];
-final userId = data['user']['id']?.toString(); // Ensure it's a String
+        final data = jsonDecode(response.body);
+        final token = data['token'];
+        print(token);
 
-final prefs = await SharedPreferences.getInstance();
-await prefs.setString('auth_token', token);
-await prefs.setString('user_id', userId ?? '');
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Connexion réussie')),
@@ -98,7 +95,8 @@ await prefs.setString('user_id', userId ?? '');
           MaterialPageRoute(builder: (_) => const Home(tabName: '')),
         );
       } else {
-        final message = jsonDecode(response.body)['message'] ?? 'Erreur de connexion';
+        final message =
+            jsonDecode(response.body)['message'] ?? 'Erreur de connexion';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur: $message')),
         );
@@ -127,9 +125,11 @@ await prefs.setString('user_id', userId ?? '');
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    _buildTextInput("Email", Icons.email, _emailController),
+                    _buildTextInput("Numéro de téléphone", Icons.phone, _phoneController),
                     const SizedBox(height: 10),
-                    _buildTextInput("Mot de Passe", Icons.lock, _passwordController, isPassword: true),
+                    _buildTextInput(
+                        "Mot de Passe", Icons.lock, _passwordController,
+                        isPassword: true),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -144,7 +144,8 @@ await prefs.setString('user_id', userId ?? '');
                         _buildOutlineButton("Créer un compte", () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const CreateAccount()),
+                            MaterialPageRoute(
+                                builder: (_) => const CreateAccount()),
                           );
                         }),
                       ],
@@ -169,7 +170,9 @@ await prefs.setString('user_id', userId ?? '');
     );
   }
 
-  Widget _buildTextInput(String label, IconData icon, TextEditingController controller, {bool isPassword = false}) {
+  Widget _buildTextInput(
+      String label, IconData icon, TextEditingController controller,
+      {bool isPassword = false}) {
     return TextField(
       controller: controller,
       obscureText: isPassword,
@@ -188,7 +191,8 @@ await prefs.setString('user_id', userId ?? '');
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         backgroundColor: const Color(0xFFF8B3BB),
       ),
-      child: Text(text, style: const TextStyle(fontSize: 18, color: Colors.white)),
+      child:
+          Text(text, style: const TextStyle(fontSize: 18, color: Colors.white)),
     );
   }
 
@@ -200,7 +204,8 @@ await prefs.setString('user_id', userId ?? '');
         backgroundColor: Colors.white,
         side: const BorderSide(color: Color(0xFFF8B3BB)),
       ),
-      child: Text(text, style: const TextStyle(fontSize: 18, color: Color(0xFFF8B3BB))),
+      child: Text(text,
+          style: const TextStyle(fontSize: 18, color: Color(0xFFF8B3BB))),
     );
   }
 }
