@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
 
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+class Profile extends StatelessWidget {
+  final String userImage;
+  final String userName;
 
-class Profile extends StatefulWidget {
-  const Profile({super.key});
-
-  @override
-  State<Profile> createState() => _ProfileState();
-}
-
-class _ProfileState extends State<Profile> {
-  Map<String, dynamic>? _user;
-  bool _isLoading = true;
+  const Profile({
+    super.key,
+    required this.userImage,
+    required this.userName,
+  });
 
   final List<Map<String, dynamic>> posts = const [
     {"image": "images/post1.jpeg", "description": "Robe soiree"},
@@ -25,65 +19,23 @@ class _ProfileState extends State<Profile> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    fetchUserProfile();
-  }
-
-Future<void> fetchUserProfile() async {
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('auth_token');
-  final userId = prefs.getString('user_id')?.trim();
-
-
-  if (token == null || userId == null) {
-    print("⚠️ Token or userId is null — cannot fetch profile.");
-    // Optional: show a snackbar or redirect to login
-    return;
-  }
-
-  final url = Uri.parse('https://artisant.onrender.com/v1/user/$userId');
-
-  final response = await http.get(
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    },
-  );
-
-  if (response.statusCode == 200) {
-    setState(() {
-      _user = jsonDecode(response.body);
-      _isLoading = false;
-    });
-  } else {
-    print("❌ Error: ${response.statusCode} - ${response.body}");
-  }
-}
-
-
-  @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.menu, color: Theme.of(context).iconTheme.color),
+          icon: const Icon(Icons.menu, color: Colors.black),
           onPressed: () => _openSettingsDrawer(context),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications, color: Theme.of(context).iconTheme.color),
-            onPressed: () {
-              // Replace with your NotificationsScreen navigation
-            },
+            icon: const Icon(Icons.notifications, color: Colors.black),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+            ),
           ),
         ],
       ),
@@ -116,57 +68,177 @@ Future<void> fetchUserProfile() async {
     );
   }
 
+  void _openSettingsDrawer(BuildContext context) {
+    showModalBottomSheet(
+      isScrollControlled: true,
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: SingleChildScrollView(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Paramètres",
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildSettingsOption(
+                      icon: Icons.person,
+                      title: "Gestion de compte",
+                      onTap: () => _navigateToAccountManagement(context),
+                    ),
+                    _buildSettingsOption(
+                      icon: Icons.settings,
+                      title: "Configuration de l'app",
+                      onTap: () => _navigateToAppConfiguration(context),
+                    ),
+                    _buildSettingsOption(
+                      icon: Icons.security,
+                      title: "Permissions",
+                      onTap: () => _navigateToPermissions(context),
+                    ),
+                    const Divider(),
+                    _buildSettingsOption(
+                      icon: Icons.logout,
+                      title: "Déconnexion",
+                      onTap: () => _logout(context),
+                    ),
+                    _buildSettingsOption(
+                      icon: Icons.add,
+                      title: "Ajouter un compte",
+                      onTap: () => _addAccount(context),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSettingsOption({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      onTap: onTap,
+    );
+  }
+
   Widget _buildHeader(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 20),
-        const CircleAvatar(radius: 40, backgroundImage: AssetImage('images/avatar.jpeg')),
+        const SizedBox(height: 10),
+        CircleAvatar(
+          radius: 50,
+          backgroundImage: AssetImage(userImage),
+        ),
         const SizedBox(height: 10),
         Text(
-          "${_user?['firstName'] ?? ''} ${_user?['lastName'] ?? ''}",
-          style: Theme.of(context).textTheme.titleLarge,
+          userName,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        Text(
-          _user?['email'] ?? '',
-          style: Theme.of(context).textTheme.bodyMedium,
+        const SizedBox(height: 5),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.star, color: Colors.amber, size: 20),
+            const Icon(Icons.star, color: Colors.amber, size: 20),
+            const Icon(Icons.star, color: Colors.amber, size: 20),
+            const Icon(Icons.star, color: Colors.amber, size: 20),
+            Icon(Icons.star_half, color: Colors.amber, size: 20),
+            const SizedBox(width: 5),
+            const Text("4.5", style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
         ),
-        const SizedBox(height: 20),
       ],
     );
   }
 
   Widget _buildStats(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40.0),
+      padding: const EdgeInsets.symmetric(vertical: 15),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: const [
-          Column(children: [Text("120", style: TextStyle(fontWeight: FontWeight.bold)), Text("Publications")]),
-          Column(children: [Text("300", style: TextStyle(fontWeight: FontWeight.bold)), Text("Abonnés")]),
-          Column(children: [Text("180", style: TextStyle(fontWeight: FontWeight.bold)), Text("Suivis")]),
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildStat("Publications", "45"),
+          _buildStat("Abonnés", "1.2k"),
+          _buildStat("Abonnements", "300"),
         ],
       ),
     );
   }
 
+  Widget _buildStat(String label, String value) {
+    return Column(
+      children: [
+        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(color: Colors.grey[600])),
+      ],
+    );
+  }
+
   Widget _buildBio(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Text(
-        "Ceci est une petite biographie. Vous pouvez personnaliser cela pour l'utilisateur.",
-        style: Theme.of(context).textTheme.bodyMedium,
+        "Styliste passionnée, spécialisée en couture traditionnelle et moderne.✨",
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Colors.grey[800]),
       ),
     );
   }
 
   Widget _buildActionButtons() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
       child: Row(
         children: [
-          Expanded(child: ElevatedButton(onPressed: () {}, child: const Text("Modifier Profil"))),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF8B3BB),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text("S'abonner"),
+            ),
+          ),
           const SizedBox(width: 10),
-          ElevatedButton(onPressed: () {}, child: const Icon(Icons.settings)),
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () {},
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                side: const BorderSide(color: Color(0xFFF8B3BB)),
+              ),
+              child: const Text(
+                "Envoyer message",
+                style: TextStyle(color: Color(0xFFF8B3BB)),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -175,25 +247,156 @@ Future<void> fetchUserProfile() async {
   Widget _buildPostsHeader() {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text("Publications", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-    );
-  }
-
-  Widget _buildPostCard(Map<String, dynamic> post) {
-    return Container(
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), image: DecorationImage(image: AssetImage(post['image']), fit: BoxFit.cover)),
-      child: Align(
-        alignment: Alignment.bottomLeft,
-        child: Container(
-          color: Colors.black.withOpacity(0.5),
-          padding: const EdgeInsets.all(4),
-          child: Text(post['description'], style: const TextStyle(color: Colors.white)),
-        ),
+      child: Text(
+        "Posts",
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
       ),
     );
   }
 
-  void _openSettingsDrawer(BuildContext context) {
-    // Keep your existing drawer logic here
+  Widget _buildPostCard(Map<String, dynamic> post) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Expanded(
+            child: Image.asset(
+              post["image"],
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(6),
+            child: Text(
+              post["description"],
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToAccountManagement(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AccountManagementScreen()),
+    );
+  }
+
+  void _navigateToAppConfiguration(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AppConfigurationScreen()),
+    );
+  }
+
+  void _navigateToPermissions(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => PermissionsScreen()),
+    );
+  }
+
+  void _logout(BuildContext context) {
+    Navigator.pop(context);
+  }
+
+  void _addAccount(BuildContext context) {
+    Navigator.pop(context);
+  }
+}
+
+class NotificationsScreen extends StatelessWidget {
+  const NotificationsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Notifications")),
+      body: const Center(child: Text("Notifications Screen")),
+    );
+  }
+}
+
+class AccountManagementScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Gestion de compte")),
+      body: const Center(child: Text("Account Management Screen")),
+    );
+  }
+}
+
+class AppConfigurationScreen extends StatefulWidget {
+  @override
+  State<AppConfigurationScreen> createState() => _AppConfigurationScreenState();
+}
+
+class _AppConfigurationScreenState extends State<AppConfigurationScreen> {
+  bool _darkMode = false;
+  bool _notificationsEnabled = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Configuration de l'app")),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            SwitchListTile(
+              title: const Text("Mode sombre"),
+              value: _darkMode,
+              onChanged: (value) => setState(() => _darkMode = value),
+            ),
+            SwitchListTile(
+              title: const Text("Notifications"),
+              value: _notificationsEnabled,
+              onChanged: (value) => setState(() => _notificationsEnabled = value),
+            ),
+            const ListTile(
+              title: Text("Langue"),
+              subtitle: Text("Français"),
+              trailing: Icon(Icons.chevron_right),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PermissionsScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Permissions")),
+      body: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            ListTile(
+              title: Text("Localisation"),
+              subtitle: Text("Accès à votre position"),
+            ),
+            ListTile(
+              title: Text("Wifi"),
+              subtitle: Text("Accès aux informations de connexion"),
+            ),
+            ListTile(
+              title: Text("Média"),
+              subtitle: Text("Accès aux photos et fichiers multimédias"),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

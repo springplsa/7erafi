@@ -94,7 +94,7 @@ class _HomeState extends State<Home>
       const Search(),
       Container(), // placeholder for Add tab
       const ChatScreen(username: '', name: ''),
-    const Profile(),
+    const Profile(userImage: '', userName: '',),
     ];
 
     return Scaffold(

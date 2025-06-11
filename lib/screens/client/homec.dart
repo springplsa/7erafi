@@ -55,7 +55,7 @@ class _ClientHomeState extends State<ClientHome> with SingleTickerProviderStateM
     final List<Widget> _screens = [
       _buildMainFeed(),       // Home
       const Search(),         // Search
-      const Profile(),        // Profile
+      const Profile(userImage: '', userName: '',),        // Profile
     ];
 
     return Scaffold(

@@ -8,10 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class CreatePostScreen extends StatefulWidget {
   final String initialPostType;
 
-  const CreatePostScreen({
-    Key? key,
-    this.initialPostType = 'Vente',
-  }) : super(key: key);
+  const CreatePostScreen({Key? key, this.initialPostType = 'Vente'}) : super(key: key);
 
   @override
   _CreatePostScreenState createState() => _CreatePostScreenState();
@@ -26,10 +23,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   String _price = '';
   File? _image;
 
+  bool _isLoading = false;
+
   final ImagePicker _picker = ImagePicker();
   final _formKey = GlobalKey<FormState>();
 
-  // Options for dropdowns
   final List<String> _paymentMethods = ['Main à Main', 'ECCP', 'Autre méthode'];
 
   final List<String> _deliveryOptions = [
@@ -38,6 +36,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     'Les deux',
     'Non précisé'
   ];
+
+  final Color appColor = Color(0xFF0066CC); // Replace with your actual app color
+
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -48,311 +50,84 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Future<void> _getImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      setState(() {
-        _image = File(image.path);
-      });
+      setState(() => _image = File(image.path));
     }
   }
 
   Future<void> _takePhoto() async {
     final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
     if (photo != null) {
-      setState(() {
-        _image = File(photo.path);
-      });
+      setState(() => _image = File(photo.path));
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Créer Une publication',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.close),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title Section
-              Text(
-                'Titre',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              TextFormField(
-                decoration: InputDecoration(
-                  hintText: 'Entrez le titre de votre publication',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer un titre';
-                  }
-                  return null;
-                },
-                onChanged: (value) => _title = value,
-              ),
-              SizedBox(height: 20),
+  Future<String?> _uploadImage(File imageFile, String token) async {
+    final uri = Uri.parse('https://artisant.onrender.com/v1/Orders/post_orders');
+    var request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
 
-              // Post Type Section
-              Text(
-                'Type de Publication',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _postType,
-                items: ['Vente', 'Commande'].map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _postType = value!;
-                  });
-                },
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                ),
-              ),
-              SizedBox(height: 20),
-
-              // Price Section
-              Text(
-                'Prix',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        hintText: 'Montant',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer un prix';
-                        }
-                        return null;
-                      },
-                      onChanged: (value) => _price = value,
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text('DZD'),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-
-              // Payment Method Dropdown
-              Text(
-                'Méthode de paiement',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _selectedPaymentMethod,
-                hint: Text('Choisissez une méthode'),
-                items: _paymentMethods.map((String method) {
-                  return DropdownMenuItem<String>(
-                    value: method,
-                    child: Text(method),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedPaymentMethod = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null) {
-                    return 'Veuillez sélectionner une méthode';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 20),
-
-              // Delivery Options Dropdown
-              Text(
-                'Options de livraison',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _selectedDeliveryOption,
-                hint: Text('Choisissez une option'),
-                items: _deliveryOptions.map((String option) {
-                  return DropdownMenuItem<String>(
-                    value: option,
-                    child: Text(option),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedDeliveryOption = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 20),
-
-              // Image Section
-              Text(
-                'Image',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: Icon(Icons.photo_library),
-                      label: Text('Galerie'),
-                      onPressed: _getImage,
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: Icon(Icons.camera_alt),
-                      label: Text('Camera'),
-                      onPressed: _takePhoto,
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (_image != null)
-                Padding(
-                  padding: EdgeInsets.only(top: 10),
-                  child: Image.file(
-                    _image!,
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              SizedBox(height: 20),
-
-              // Description Section
-              Text(
-                'Description',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              TextFormField(
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'Décrivez votre publication...',
-                  border: OutlineInputBorder(),
-                  alignLabelWithHint: true,
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer une description';
-                  }
-                  return null;
-                },
-                onChanged: (value) => _description = value,
-              ),
-              SizedBox(height: 30),
-
-              // Publish Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submitPost,
-                  child: Text(
-                    'Publier',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    try {
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return data['url'];
+      } else {
+        print('Upload failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Upload exception: $e');
+      return null;
+    }
   }
 
-  void _submitPost() async {
+  Future<void> _submitPost() async {
     if (!_formKey.currentState!.validate()) return;
-
     if (_selectedPaymentMethod == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Veuillez sélectionner une méthode de paiement')),
+        SnackBar(content: Text('Veuillez sélectionner une méthode de paiement')),
       );
       return;
     }
 
-    // STEP 3: Retrieve token from shared_preferences
+    setState(() => _isLoading = true);
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
 
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Token non disponible. Veuillez vous reconnecter.')),
+        SnackBar(content: Text('Token non disponible. Veuillez vous reconnecter.')),
       );
+      setState(() => _isLoading = false);
       return;
     }
 
-    final url = Uri.parse('https://artisant.onrender.com/v1/posts');
-
-    // Optional: prepare media object if an image is selected
-    List<Map<String, dynamic>> mediaList = [];
+    String? uploadedImageUrl;
     if (_image != null) {
-      mediaList.add({
-        "url": _image!
-            .path, // You should ideally upload this to a server and use that URL
-        "type": "image",
-        "public_id": "local-${DateTime.now().millisecondsSinceEpoch}"
-      });
+      uploadedImageUrl = await _uploadImage(_image!, token);
+      if (uploadedImageUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Échec du téléversement de l\'image.')),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
     }
+
+    final postUrl = Uri.parse('https://artisant.onrender.com/v1/posts');
+
+    final mediaList = uploadedImageUrl != null
+        ? [
+            {
+              "url": uploadedImageUrl,
+              "type": "image",
+              "public_id": "uploaded-${DateTime.now().millisecondsSinceEpoch}"
+            }
+          ]
+        : [];
 
     final Map<String, dynamic> body = {
       "title": _title,
@@ -366,7 +141,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     try {
       final response = await http.post(
-        url,
+        postUrl,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -376,19 +151,197 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        print('✅ Post créé: $responseData');
         Navigator.pop(context, responseData);
       } else {
-        print('❌ Erreur lors de la création: ${response.body}');
+        print('Post failed: ${response.body}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur de publication.')),
         );
       }
     } catch (e) {
-      print('❌ Exception: $e');
+      print('Exception: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Échec de la publication.')),
       );
     }
+
+    setState(() => _isLoading = false);
+  }
+
+  void _onBottomNavTapped(int index) {
+    setState(() => _selectedIndex = index);
+    // You can implement actual navigation here
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: appColor,
+        title: Text('Créer Une publication'),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.close),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    buildLabel('Titre'),
+                    buildTextField(
+                      hint: 'Entrez le titre de votre publication',
+                      onChanged: (val) => _title = val,
+                    ),
+                    SizedBox(height: 20),
+
+                    buildLabel('Type de Publication'),
+                    DropdownButtonFormField<String>(
+                      value: _postType,
+                      items: ['Vente', 'Commande'].map((value) {
+                        return DropdownMenuItem(value: value, child: Text(value));
+                      }).toList(),
+                      onChanged: (value) => setState(() => _postType = value!),
+                      decoration: InputDecoration(border: OutlineInputBorder()),
+                    ),
+                    SizedBox(height: 20),
+
+                    buildLabel('Prix'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: buildTextField(
+                            hint: 'Montant',
+                            keyboardType: TextInputType.number,
+                            onChanged: (val) => _price = val,
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text('DZD'),
+                        )
+                      ],
+                    ),
+                    SizedBox(height: 20),
+
+                    buildLabel('Méthode de paiement'),
+                    DropdownButtonFormField<String>(
+                      value: _selectedPaymentMethod,
+                      hint: Text('Choisissez une méthode'),
+                      items: _paymentMethods.map((value) {
+                        return DropdownMenuItem(value: value, child: Text(value));
+                      }).toList(),
+                      onChanged: (value) => setState(() => _selectedPaymentMethod = value),
+                      validator: (value) => value == null ? 'Sélectionnez une méthode' : null,
+                      decoration: InputDecoration(border: OutlineInputBorder()),
+                    ),
+                    SizedBox(height: 20),
+
+                    buildLabel('Options de livraison'),
+                    DropdownButtonFormField<String>(
+                      value: _selectedDeliveryOption,
+                      hint: Text('Choisissez une option'),
+                      items: _deliveryOptions.map((value) {
+                        return DropdownMenuItem(value: value, child: Text(value));
+                      }).toList(),
+                      onChanged: (value) => setState(() => _selectedDeliveryOption = value),
+                      decoration: InputDecoration(border: OutlineInputBorder()),
+                    ),
+                    SizedBox(height: 20),
+
+                    buildLabel('Image'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: Icon(Icons.photo_library),
+                            label: Text('Galerie'),
+                            onPressed: _getImage,
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: Icon(Icons.camera_alt),
+                            label: Text('Caméra'),
+                            onPressed: _takePhoto,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_image != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: 10),
+                        child: Image.file(_image!, height: 150, width: double.infinity, fit: BoxFit.cover),
+                      ),
+                    SizedBox(height: 20),
+
+                    buildLabel('Description'),
+                    buildTextField(
+                      hint: 'Décrivez votre publication...',
+                      maxLines: 4,
+                      onChanged: (val) => _description = val,
+                    ),
+                    SizedBox(height: 30),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _submitPost,
+                        child: Text('Publier', style: TextStyle(fontSize: 18)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: appColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        selectedItemColor: appColor,
+        onTap: _onBottomNavTapped,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
+          BottomNavigationBarItem(icon: Icon(Icons.add_box), label: 'Créer'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+        ],
+      ),
+    );
+  }
+
+  Widget buildLabel(String text) => Text(text, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold));
+
+  Widget buildTextField({
+    required String hint,
+    int maxLines = 1,
+    TextInputType keyboardType = TextInputType.text,
+    required Function(String) onChanged,
+  }) {
+    return TextFormField(
+      decoration: InputDecoration(hintText: hint, border: OutlineInputBorder()),
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      validator: (value) => value == null || value.isEmpty ? 'Ce champ est requis' : null,
+      onChanged: onChanged,
+    );
   }
 }
